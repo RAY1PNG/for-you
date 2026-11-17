@@ -84,7 +84,6 @@
   }
   /* laptop / desktop: the calendar step goes side by side so it fits one screen */
   @media (min-width: 800px) {
-    .card { transition: max-width .3s ease; }
     .card:has([data-step="3"].show) { max-width: 760px; }
     .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: start; }
     .cols > div:last-child > .label { margin-top: 0; }
