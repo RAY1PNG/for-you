@@ -59,8 +59,22 @@
   .btn.yes { background: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px -8px var(--accent); }
   .btn.no, .btn.ghost { background: #f4eef0; color: var(--soft); }
   .btn:disabled { opacity: .45; cursor: default; }
-  .ask { display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 24px; min-height: 60px; }
-  #noBtn { transition: transform .25s cubic-bezier(.3, 1.4, .5, 1); }
+  .ask { display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 30px; min-height: 90px; }
+  #noBtn { transition: transform .25s cubic-bezier(.3, 1.4, .5, 1), opacity .25s; position: relative; z-index: 1; }
+  #yesBtn { transition: transform .3s cubic-bezier(.3, 1.6, .5, 1); position: relative; z-index: 2; }
+  .ask.swap { flex-direction: row-reverse; }
+  .cal { border: 2px solid var(--line); border-radius: 18px; padding: 10px; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .cal-head b { font-size: 15px; }
+  .cal-head button { font: inherit; font-size: 20px; width: 40px; height: 36px; border: 0; border-radius: 12px; background: var(--chip); color: var(--ink); cursor: pointer; }
+  .cal-head button:disabled { opacity: .3; cursor: default; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+  .cal-grid span { font-size: 12px; font-weight: 600; color: var(--soft); padding: 4px 0; }
+  .cal-grid button { font: inherit; font-size: 15px; aspect-ratio: 1; border: 0; border-radius: 50%; background: transparent; color: var(--ink); cursor: pointer; padding: 0; }
+  .cal-grid button.today { box-shadow: inset 0 0 0 2px var(--line); }
+  .cal-grid button.on { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  .cal-grid button:disabled { color: #d9c8cd; cursor: default; }
+  .cal-count { font-size: 13px; color: var(--soft); margin-top: 8px; text-align: center; }
   .nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 26px; }
   .nav .btn.yes { flex: 1; }
   .summary { background: #fff7f8; border: 2px dashed var(--line); border-radius: 18px; padding: 14px 16px; font-size: 15px; white-space: pre-wrap; line-height: 1.55; margin: 6px 0 4px; }
@@ -133,10 +147,15 @@
       <button class="chip">🍦 Dessert</button><button class="chip">🕹️ Arcade</button>
       <button class="chip">🛍️ Window shopping</button><button class="chip">🍽️ Just food is fine</button>
     </div>
-    <div class="label">Which days work?</div>
-    <div class="chips" data-key="days" data-multi>
-      <button class="chip">Mon</button><button class="chip">Tue</button><button class="chip">Wed</button>
-      <button class="chip">Thu</button><button class="chip">Fri</button><button class="chip">Sat</button><button class="chip">Sun</button>
+    <div class="label">When are you free? Tap the dates</div>
+    <div class="cal">
+      <div class="cal-head">
+        <button id="calPrev" aria-label="Previous month">‹</button>
+        <b id="calTitle"></b>
+        <button id="calNext" aria-label="Next month">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-count" id="calCount"></div>
     </div>
     <div class="label">Time</div>
     <div class="chips" data-key="time" data-multi>
@@ -174,7 +193,7 @@ const CFG = {
 
 const $ = s => document.querySelector(s);
 const steps = [...document.querySelectorAll('.step')];
-const answers = { food: [], avoid: [], vibe: [], after: [], days: [], time: [] };
+const answers = { food: [], avoid: [], vibe: [], after: [], time: [] };
 let cur = 'ask';
 
 if (CFG.her) $('#askTitle').textContent = CFG.her + ', will you go on a date with me?';
@@ -209,7 +228,7 @@ $('#foodOther').addEventListener('input', refreshNext);
 function refreshNext() {
   let ok = true;
   if (cur === '1') ok = answers.food.length > 0 || $('#foodOther').value.trim() !== '';
-  if (cur === '3') ok = answers.days.length > 0;
+  if (cur === '3') ok = picked.size > 0;
   $('#next').disabled = !ok;
 }
 
@@ -218,23 +237,101 @@ $('#prev').onclick = () => show(cur === '1' ? 'ask' : Number(cur) - 1);
 
 // yes / no
 $('#yesBtn').onclick = () => { hearts(); show(1); };
-$('#backBtn').onclick = () => show('ask');
+$('#backBtn').onclick = () => { resetNo(); show('ask'); };
 
-const noLines = ['Are you sure?', 'Really sure?', 'Last chance…'];
-let dodges = 0;
-function dodge(e) {
-  if (dodges >= noLines.length) return;          // after 3 tries it stays put and works
-  e.preventDefault();
-  const btn = $('#noBtn');
-  btn.textContent = noLines[dodges++];
-  const x = (Math.random() < .5 ? -1 : 1) * (30 + Math.random() * 50);
-  const y = (Math.random() < .5 ? -1 : 1) * (40 + Math.random() * 40);
-  btn.style.transform = `translate(${x}px, ${y}px)`;
-  if (dodges === noLines.length) setTimeout(() => { btn.style.transform = ''; btn.textContent = 'No'; }, 900);
+// ---- the No button: a random trick each try, then it gives up and works ----
+const MAX_TRIES = 6;
+const pleas = ['Are you sure?', 'Really sure?', 'Think again…', 'Pretty please? 🥺', 'I\'ll pay for dessert!',
+  'But I already picked an outfit…', 'The Yes button looks nice, no?', 'My heart can\'t take it 💔',
+  'Wrong button, try the pink one', 'I\'ll let you pick the movie too'];
+const noLabels = ['No', 'Nope', 'Hmm…', 'Nah', 'Catch me', 'Missed!', 'Too slow'];
+const rnd = (a, b) => a + Math.random() * (b - a);
+const sign = () => (Math.random() < .5 ? -1 : 1);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const subDefault = $('#askSub').textContent;
+let tries = 0, armed = false, lastTry = 0, lastTrick = '', lastPlea = '';
+let no = { x: 0, y: 0, s: 1, r: 0 }, yesScale = 1;
+
+function paint() {
+  $('#noBtn').style.transform = `translate(${no.x}px, ${no.y}px) scale(${no.s}) rotate(${no.r}deg)`;
+  $('#yesBtn').style.transform = `scale(${yesScale})`;
 }
-$('#noBtn').addEventListener('pointerdown', dodge);
-$('#noBtn').addEventListener('mouseenter', e => { if (matchMedia('(hover: hover)').matches) dodge(e); });
-$('#noBtn').addEventListener('click', () => { if (dodges >= noLines.length && !$('#noBtn').style.transform) show('declined'); });
+const tricks = {
+  dodge()  { no.x = sign() * rnd(40, 90); no.y = sign() * rnd(50, 90); },
+  spin()   { no.x = sign() * rnd(20, 70); no.y = sign() * rnd(40, 80); no.r += sign() * 360; },
+  shrink() { no.s = Math.max(.45, no.s - .2); no.x = sign() * rnd(10, 40); no.y = rnd(30, 60); },
+  swap()   { $('.ask').classList.toggle('swap'); no.x = 0; no.y = 0; },
+  grow()   { yesScale = Math.min(2, yesScale + .3); no.y = rnd(60, 90); no.x = sign() * rnd(0, 50); },
+  vanish() { const b = $('#noBtn'); b.style.opacity = 0; no.x = sign() * rnd(30, 80); no.y = sign() * rnd(40, 80);
+             setTimeout(() => b.style.opacity = 1, 700); }
+};
+function resetNo() {
+  tries = 0; armed = false; no = { x: 0, y: 0, s: 1, r: 0 }; yesScale = 1;
+  $('.ask').classList.remove('swap');
+  $('#noBtn').textContent = 'No'; $('#noBtn').style.opacity = 1;
+  $('#askSub').textContent = subDefault;
+  paint();
+}
+function tease(e) {
+  if (armed || tries >= MAX_TRIES) return;
+  const now = Date.now();
+  if (now - lastTry < 350) return;               // hover + press on desktop counts once
+  lastTry = now; tries++;
+  if (e.cancelable) e.preventDefault();
+
+  let name; do { name = pick(Object.keys(tricks)); } while (name === lastTrick);
+  lastTrick = name; tricks[name]();
+  yesScale = Math.min(2, yesScale + .12);        // Yes always grows a little
+  let plea; do { plea = pick(pleas); } while (plea === lastPlea);
+  lastPlea = plea;
+  $('#askSub').textContent = plea;
+  $('#noBtn').textContent = pick(noLabels);
+  paint();
+
+  if (tries === MAX_TRIES) setTimeout(() => {    // out of tricks: sit still and behave
+    no = { x: 0, y: 0, s: 1, r: no.r }; yesScale = 1.2; $('.ask').classList.remove('swap');
+    $('#noBtn').textContent = 'No'; $('#noBtn').style.opacity = 1;
+    $('#askSub').textContent = 'Okay okay, I\'ll stop. It works now.';
+    paint(); armed = true;
+  }, 1100);
+}
+$('#noBtn').addEventListener('pointerdown', tease);
+$('#noBtn').addEventListener('mouseenter', e => { if (matchMedia('(hover: hover)').matches) tease(e); });
+$('#noBtn').addEventListener('click', () => { if (armed) show('declined'); });
+
+// ---- calendar: tap the dates you're free ----
+const picked = new Set();
+const pad = n => String(n).padStart(2, '0');
+const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const fromIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const nice = s => fromIso(s).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+const CAL_MONTHS = 3;                            // this month + the next two
+let calOff = 0;
+function drawCal() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const first = new Date(today.getFullYear(), today.getMonth() + calOff, 1);
+  const count = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  $('#calTitle').textContent = first.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  $('#calPrev').disabled = calOff === 0;
+  $('#calNext').disabled = calOff === CAL_MONTHS - 1;
+  let html = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(d => `<span>${d}</span>`).join('');
+  html += '<i></i>'.repeat((first.getDay() + 6) % 7);
+  for (let d = 1; d <= count; d++) {
+    const date = new Date(first.getFullYear(), first.getMonth(), d), key = iso(date);
+    const cls = [picked.has(key) && 'on', +date === +today && 'today'].filter(Boolean).join(' ');
+    html += `<button data-d="${key}" class="${cls}" ${date < today ? 'disabled' : ''}>${d}</button>`;
+  }
+  $('#calGrid').innerHTML = html;
+  $('#calCount').textContent = picked.size ? picked.size + (picked.size === 1 ? ' date' : ' dates') + ' picked' : 'Pick at least one';
+}
+$('#calGrid').addEventListener('click', e => {
+  const b = e.target.closest('button[data-d]'); if (!b || b.disabled) return;
+  picked.has(b.dataset.d) ? picked.delete(b.dataset.d) : picked.add(b.dataset.d);
+  drawCal(); refreshNext();
+});
+$('#calPrev').onclick = () => { calOff--; drawCal(); };
+$('#calNext').onclick = () => { calOff++; drawCal(); };
+drawCal();
 
 function hearts() {
   for (let i = 0; i < 18; i++) {
@@ -260,7 +357,7 @@ function buildText() {
     ['Avoid', list(answers.avoid, $('#avoidOther').value)],
     ['Vibe', list(answers.vibe)],
     ['After', list(answers.after)],
-    ['Days', list(answers.days)],
+    ['Free on', [...picked].sort().map(nice).join(', ')],
     ['Time', list(answers.time)],
     ['Note', $('#note').value.trim()]
   ];
