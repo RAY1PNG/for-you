@@ -11,17 +11,19 @@
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   [hidden] { display: none !important; }
-  html, body { height: 100%; margin: 0; }
+  html { height: 100%; }
+  body { min-height: 100%; min-height: 100dvh; margin: 0; }
   body {
     background: radial-gradient(circle at 20% 0%, #ffe1e8 0, transparent 55%),
                 radial-gradient(circle at 100% 100%, #ffe9d6 0, transparent 50%), var(--bg);
     color: var(--ink);
     font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-    display: flex; align-items: center; justify-content: center;
-    padding: 16px; overflow-x: hidden;
+    display: flex; padding: 16px; overflow-x: hidden;
   }
   .card {
-    position: relative; width: 100%; max-width: 440px; background: var(--card);
+    /* margin:auto centres the card but, unlike align-items:center, never pushes its top off-screen when it is taller than the window */
+    margin: auto;
+    position: relative; width: 100%; max-width: 460px; background: var(--card);
     border-radius: 28px; padding: 28px 22px 24px;
     box-shadow: 0 20px 50px -20px rgba(232, 80, 122, .45);
   }
@@ -70,11 +72,33 @@
   .cal-head button:disabled { opacity: .3; cursor: default; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
   .cal-grid span { font-size: 12px; font-weight: 600; color: var(--soft); padding: 4px 0; }
-  .cal-grid button { font: inherit; font-size: 15px; aspect-ratio: 1; border: 0; border-radius: 50%; background: transparent; color: var(--ink); cursor: pointer; padding: 0; }
+  .cal-grid button { font: inherit; font-size: 15px; height: 38px; border: 0; border-radius: 999px; background: transparent; color: var(--ink); cursor: pointer; padding: 0; }
   .cal-grid button.today { box-shadow: inset 0 0 0 2px var(--line); }
   .cal-grid button.on { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
   .cal-grid button:disabled { color: #d9c8cd; cursor: default; }
   .cal-count { font-size: 13px; color: var(--soft); margin-top: 8px; text-align: center; }
+  @media (hover: hover) {
+    .chip:hover { border-color: var(--accent); }
+    .cal-grid button:not(:disabled):not(.on):hover, .cal-head button:not(:disabled):hover { background: var(--chip); }
+    .btn.yes:not(:disabled):hover { filter: brightness(1.06); }
+  }
+  /* laptop / desktop: the calendar step goes side by side so it fits one screen */
+  @media (min-width: 800px) {
+    .card { transition: max-width .3s ease; }
+    .card:has([data-step="3"].show) { max-width: 760px; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: start; }
+    .cols > div:last-child > .label { margin-top: 0; }
+  }
+  /* short laptop screens: tighten spacing so each step fits without much scrolling */
+  @media (min-width: 600px) and (max-height: 820px) {
+    .card { padding: 22px 26px 20px; }
+    .progress { margin-bottom: 16px; }
+    .label { margin: 12px 0 6px; }
+    .chip { padding: 8px 13px; font-size: 14px; }
+    .cal-grid button { height: 32px; }
+    .nav { margin-top: 18px; }
+    p.sub { margin-bottom: 12px; }
+  }
   .nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 26px; }
   .nav .btn.yes { flex: 1; }
   .summary { background: #fff7f8; border: 2px dashed var(--line); border-radius: 18px; padding: 14px 16px; font-size: 15px; white-space: pre-wrap; line-height: 1.55; margin: 6px 0 4px; }
@@ -142,11 +166,17 @@
   <section class="step" data-step="3">
     <h2>And after we eat?</h2>
     <p class="sub">Pick what sounds fun.</p>
+    <div class="cols"><div>
     <div class="chips" data-key="after" data-multi>
       <button class="chip">🚶 Walk & talk</button><button class="chip">🎬 Movie</button>
       <button class="chip">🍦 Dessert</button><button class="chip">🕹️ Arcade</button>
       <button class="chip">🛍️ Window shopping</button><button class="chip">🍽️ Just food is fine</button>
     </div>
+    <div class="label">Time</div>
+    <div class="chips" data-key="time" data-multi>
+      <button class="chip">Lunch</button><button class="chip">Afternoon</button><button class="chip">Dinner</button>
+    </div>
+    </div><div>
     <div class="label">When are you free? Tap the dates</div>
     <div class="cal">
       <div class="cal-head">
@@ -157,10 +187,7 @@
       <div class="cal-grid" id="calGrid"></div>
       <div class="cal-count" id="calCount"></div>
     </div>
-    <div class="label">Time</div>
-    <div class="chips" data-key="time" data-multi>
-      <button class="chip">Lunch</button><button class="chip">Afternoon</button><button class="chip">Dinner</button>
-    </div>
+    </div></div>
   </section>
 
   <!-- 4: send -->
