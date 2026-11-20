@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Know Me Quiz</title>
+<style>
+  :root {
+    --bg: #fff4f1; --card: #ffffff; --ink: #3a2530; --soft: #8a6f7a;
+    --accent: #e8507a; --accent-ink: #ffffff; --chip: #fde6ea; --line: #f3d3da;
+    --good: #2e9e6a; --bad: #d0445c;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html { height: 100%; }
+  body {
+    min-height: 100%; min-height: 100dvh; margin: 0; padding: 16px; overflow-x: hidden;
+    background: radial-gradient(circle at 20% 0%, #ffe1e8 0, transparent 55%),
+                radial-gradient(circle at 100% 100%, #ffe9d6 0, transparent 50%), var(--bg);
+    color: var(--ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    display: flex;
+  }
+  .card {
+    margin: auto; width: 100%; max-width: 460px; background: var(--card);
+    border-radius: 28px; padding: 26px 22px 24px;
+    box-shadow: 0 20px 50px -20px rgba(232, 80, 122, .45);
+    animation: in .35s ease;
+  }
+  @keyframes in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .big { font-size: 52px; text-align: center; line-height: 1; margin-bottom: 10px; }
+  h1 { font-size: 25px; line-height: 1.2; margin: 0 0 8px; text-align: center; text-wrap: balance; }
+  h2 { font-size: 21px; line-height: 1.3; margin: 0 0 16px; text-wrap: balance; }
+  p.sub { color: var(--soft); margin: 0 0 18px; font-size: 15px; text-align: center; }
+  .label { font-size: 13px; font-weight: 600; color: var(--soft); margin: 14px 0 6px; text-transform: uppercase; letter-spacing: .05em; }
+  input[type=text] {
+    width: 100%; font: inherit; font-size: 16px; color: var(--ink);
+    border: 2px solid var(--line); border-radius: 16px; padding: 12px 14px; outline: none; background: #fffafa;
+  }
+  input[type=text]:focus { border-color: var(--accent); }
+  .btn {
+    width: 100%; font: inherit; font-size: 17px; font-weight: 700; border: 0; cursor: pointer;
+    border-radius: 18px; padding: 15px; background: var(--accent); color: var(--accent-ink); margin-top: 20px;
+  }
+  .btn.ghost { background: var(--chip); color: var(--ink); margin-top: 10px; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .meta { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--soft); margin-bottom: 8px; }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+  .opts { display: grid; gap: 10px; }
+  .opt {
+    text-align: left; font: inherit; font-size: 16px; color: var(--ink); background: var(--chip);
+    border: 2px solid transparent; border-radius: 16px; padding: 14px 16px; cursor: pointer; transition: transform .1s;
+  }
+  .opt:active { transform: scale(.98); }
+  .opt.right { background: #ddf5e8; border-color: var(--good); }
+  .opt.wrong { background: #fde0e4; border-color: var(--bad); }
+  .opt:disabled { cursor: default; }
+  .feedback { min-height: 24px; margin-top: 14px; font-weight: 700; text-align: center; }
+  .score-row { display: flex; gap: 10px; margin: 6px 0 18px; }
+  .score { flex: 1; background: var(--chip); border-radius: 18px; padding: 14px 10px; text-align: center; }
+  .score b { display: block; font-size: 30px; color: var(--accent); }
+  .score span { font-size: 14px; color: var(--soft); }
+  .verdict { text-align: center; font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+  details { border-top: 2px solid var(--line); padding: 12px 0 0; margin-top: 8px; }
+  summary { cursor: pointer; font-weight: 700; }
+  .review { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 10px; }
+  .review li { font-size: 14px; background: #fffafa; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+  .review .qq { font-weight: 600; margin-bottom: 4px; }
+  .review .ok { color: var(--good); } .review .no { color: var(--bad); }
+  .seg { display: flex; gap: 6px; background: var(--chip); padding: 4px; border-radius: 999px; }
+  .seg button { flex: 1; border: 0; background: transparent; font: inherit; font-weight: 600; color: var(--soft); padding: 9px; border-radius: 999px; cursor: pointer; }
+  .seg button.on { background: var(--card); color: var(--accent); }
+</style>
+</head>
+<body>
+<main class="card" id="app"></main>
+
+<script>
+// "me" is asked to the person answering about themselves; "them" is asked to the guesser ({n} = the other person's name).
+const BANK = [
+  { me: "What's your comfort food?", them: "What's {n}'s comfort food?", o: ["Something cheesy", "Noodles or soup", "Something sweet", "Home-cooked food"] },
+  { me: "Your ideal Sunday?", them: "{n}'s ideal Sunday?", o: ["Sleeping in", "Out and about", "Gaming / bingeing shows", "Seeing friends or family"] },
+  { me: "Which would you rather get as a gift?", them: "Which would {n} rather get as a gift?", o: ["Something handmade", "Something practical", "An experience", "A sweet note"] },
+  { me: "When you're stressed, you…", them: "When {n} is stressed, they…", o: ["Go quiet", "Talk it out", "Keep busy", "Eat snacks"] },
+  { me: "Pick a dream trip.", them: "Which dream trip would {n} pick?", o: ["Beach island", "Snowy mountains", "Big city", "Road trip"] },
+  { me: "Your go-to drink?", them: "{n}'s go-to drink?", o: ["Bubble tea", "Coffee", "Juice or soda", "Water, honestly"] },
+  { me: "Which superpower would you choose?", them: "Which superpower would {n} choose?", o: ["Teleporting", "Reading minds", "Flying", "Stopping time"] },
+  { me: "What scares you most?", them: "What scares {n} most?", o: ["Bugs or spiders", "Heights", "The dark", "Public speaking"] },
+  { me: "How do you show you care?", them: "How does {n} show they care?", o: ["Kind words", "Doing things for you", "Gifts", "Hugs and closeness"] },
+  { me: "Your perfect movie genre?", them: "{n}'s favourite movie genre?", o: ["Comedy", "Horror", "Romance", "Action / sci-fi"] },
+  { me: "Morning you is…", them: "Morning {n} is…", o: ["Up and ready", "Needs coffee first", "Snoozes 5 times", "Grumpy, do not talk"] },
+  { me: "Which pet would you pick?", them: "Which pet would {n} pick?", o: ["Dog", "Cat", "Something unusual", "No pets please"] },
+  { me: "At a party you're usually…", them: "At a party, {n} is usually…", o: ["Dancing", "Talking to one person all night", "Near the snacks", "Ready to go home"] },
+  { me: "Your texting style?", them: "{n}'s texting style?", o: ["Lots of emojis", "Short and quick", "Long paragraphs", "Voice notes"] },
+  { me: "Sweet or savoury snacks?", them: "Does {n} prefer sweet or savoury snacks?", o: ["Sweet all the way", "Savoury all the way", "Both at once", "Depends on the day"] },
+  { me: "Best way to spend a rainy day?", them: "{n}'s best rainy-day plan?", o: ["Blanket and a movie", "Cooking or baking", "Gaming", "Napping"] },
+  { me: "Which season is your favourite?", them: "Which season is {n}'s favourite?", o: ["Spring", "Summer", "Autumn", "Winter"] },
+  { me: "Your biggest pet peeve?", them: "{n}'s biggest pet peeve?", o: ["People being late", "Loud chewing", "Slow walkers", "Being left on read"] },
+  { me: "If you won a lot of money, you'd first…", them: "If {n} won a lot of money, they'd first…", o: ["Travel", "Treat family", "Save it", "Go shopping"] },
+  { me: "What would you sing at karaoke?", them: "What would {n} sing at karaoke?", o: ["A big ballad", "A rap verse", "A cheesy duet", "Nothing, I'd hide"] },
+  { me: "Your sleep position?", them: "{n}'s sleep position?", o: ["On my side", "On my back", "Starfish", "Curled up in a ball"] },
+  { me: "Which dessert wins?", them: "Which dessert would {n} pick?", o: ["Ice cream", "Cake", "Chocolate", "Fruit"] },
+  { me: "How do you like to be cheered up?", them: "How does {n} like to be cheered up?", o: ["Jokes and silliness", "A hug", "Food", "Space and quiet"] },
+  { me: "Your dream date?", them: "{n}'s dream date?", o: ["Fancy dinner", "Picnic outdoors", "Something adventurous", "Cozy night in"] },
+  { me: "Which do you lose most often?", them: "What does {n} lose most often?", o: ["Keys", "Phone", "Earbuds", "Track of time"] },
+  { me: "Are you more of a planner or spontaneous?", them: "Is {n} more of a planner or spontaneous?", o: ["Plan everything", "Mostly plan", "Mostly wing it", "Pure chaos"] },
+  { me: "Your favourite way to travel?", them: "{n}'s favourite way to travel?", o: ["Plane", "Train", "Car", "Walking"] },
+  { me: "Which chore do you hate most?", them: "Which chore does {n} hate most?", o: ["Dishes", "Laundry", "Vacuuming", "Taking out trash"] },
+  { me: "Pick a weekend breakfast.", them: "Which weekend breakfast would {n} pick?", o: ["Pancakes or waffles", "Eggs and toast", "Cereal", "Skip it, brunch later"] },
+  { me: "What do you notice first about someone?", them: "What does {n} notice first about someone?", o: ["Smile", "Eyes", "Style", "Voice"] }
+];
+
+const $app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function load(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+
+let S;   // game state
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function setup() {
+  const names = load("quiz.names", ["", ""]);
+  let count = load("quiz.count", 8);
+  $app.innerHTML = `
+    <div class="big">🧠💞</div>
+    <h1>How well do you know me?</h1>
+    <p class="sub">One phone. You each answer about yourself in secret, then guess the other's answers.</p>
+    <div class="label">Player 1</div><input type="text" id="n0" maxlength="20" placeholder="Name" value="${esc(names[0])}">
+    <div class="label">Player 2</div><input type="text" id="n1" maxlength="20" placeholder="Name" value="${esc(names[1])}">
+    <div class="label">Questions each</div>
+    <div class="seg" id="seg">${[5, 8, 12].map(c => `<button data-c="${c}" class="${c === count ? "on" : ""}">${c}</button>`).join("")}</div>
+    <button class="btn" id="go">Start</button>`;
+  document.getElementById("seg").onclick = e => {
+    const c = +e.target.dataset.c; if (!c) return; count = c;
+    document.querySelectorAll("#seg button").forEach(b => b.classList.toggle("on", +b.dataset.c === c));
+  };
+  document.getElementById("go").onclick = () => {
+    const n = [document.getElementById("n0").value.trim() || "Player 1", document.getElementById("n1").value.trim() || "Player 2"];
+    save("quiz.names", n); save("quiz.count", count);
+    S = { names: n, qs: shuffle([...BANK.keys()]).slice(0, count), answers: [[], []], guesses: [[], []], phase: 0 };
+    // phases: 0 = P1 answers self, 1 = P2 guesses P1, 2 = P2 answers self, 3 = P1 guesses P2
+    handoff();
+  };
+}
+
+function phaseInfo() {
+  const [a, b] = S.names;
+  return [
+    { who: 0, about: 0, title: `${a}, answer about yourself`, note: `Keep the screen away from ${b}.` },
+    { who: 1, about: 0, title: `${b}, guess ${a}'s answers`, note: `See how well you know ${a}.` },
+    { who: 1, about: 1, title: `${b}, now answer about yourself`, note: `Keep the screen away from ${a}.` },
+    { who: 0, about: 1, title: `${a}, guess ${b}'s answers`, note: `Your turn to prove it.` }
+  ][S.phase];
+}
+
+function handoff() {
+  const p = phaseInfo();
+  $app.style.animation = "none"; void $app.offsetWidth; $app.style.animation = "";
+  $app.innerHTML = `
+    <div class="big">${S.phase % 2 ? "🔍" : "🤫"}</div>
+    <h1>Pass the phone to ${esc(S.names[p.who])}</h1>
+    <p class="sub">${esc(p.title)}. ${esc(p.note)}</p>
+    <button class="btn" id="ready">I'm ${esc(S.names[p.who])}, ready</button>`;
+  document.getElementById("ready").onclick = () => ask(0);
+}
+
+function ask(i) {
+  const p = phaseInfo(), q = BANK[S.qs[i]], guessing = S.phase % 2 === 1;
+  const text = guessing ? q.them.replace("{n}", S.names[p.about]) : q.me;
+  $app.innerHTML = `
+    <div class="meta"><span>${esc(p.title)}</span><span>${i + 1}/${S.qs.length}</span></div>
+    <div class="bar"><i style="width:${(i / S.qs.length) * 100}%"></i></div>
+    <h2>${esc(text)}</h2>
+    <div class="opts">${q.o.map((o, k) => `<button class="opt" data-k="${k}">${esc(o)}</button>`).join("")}</div>
+    <div class="feedback" id="fb"></div>`;
+  $app.querySelector(".opts").onclick = e => {
+    const btn = e.target.closest(".opt"); if (!btn) return;
+    const k = +btn.dataset.k;
+    $app.querySelectorAll(".opt").forEach(b => b.disabled = true);
+    if (!guessing) { S.answers[p.about][i] = k; btn.classList.add("right"); return setTimeout(() => nextQ(i), 280); }
+    S.guesses[p.about][i] = k;
+    const real = S.answers[p.about][i], fb = document.getElementById("fb");
+    if (k === real) { btn.classList.add("right"); fb.textContent = "Nailed it! 🎯"; fb.style.color = "var(--good)"; }
+    else {
+      btn.classList.add("wrong"); $app.querySelector(`.opt[data-k="${real}"]`).classList.add("right");
+      fb.textContent = "Nope! 🙈"; fb.style.color = "var(--bad)";
+    }
+    setTimeout(() => nextQ(i), 1100);
+  };
+}
+
+function nextQ(i) {
+  if (i + 1 < S.qs.length) return ask(i + 1);
+  S.phase++;
+  if (S.phase < 4) handoff(); else results();
+}
+
+function results() {
+  const [a, b] = S.names, n = S.qs.length;
+  const score = about => S.qs.reduce((s, _, i) => s + (S.guesses[about][i] === S.answers[about][i] ? 1 : 0), 0);
+  const bKnowsA = score(0), aKnowsB = score(1), pct = (bKnowsA + aKnowsB) / (2 * n);
+  const verdict = pct >= .85 ? "Basically mind readers 🔮" : pct >= .6 ? "You two are in sync 💞" : pct >= .35 ? "Getting there — more dates needed 😄" : "Plenty left to discover 🌱";
+  const review = about => `<ul class="review">${S.qs.map((qi, i) => {
+    const q = BANK[qi], real = q.o[S.answers[about][i]], g = q.o[S.guesses[about][i]], ok = real === g;
+    return `<li><div class="qq">${esc(q.them.replace("{n}", S.names[about]))}</div>
+      <div>Answer: <b>${esc(real)}</b></div>
+      <div class="${ok ? "ok" : "no"}">${ok ? "✓ Guessed right" : "✗ Guessed: " + esc(g)}</div></li>`;
+  }).join("")}</ul>`;
+  $app.innerHTML = `
+    <div class="big">🏆</div>
+    <h1>Results</h1>
+    <div class="score-row">
+      <div class="score"><b>${bKnowsA}/${n}</b><span>${esc(b)} knows ${esc(a)}</span></div>
+      <div class="score"><b>${aKnowsB}/${n}</b><span>${esc(a)} knows ${esc(b)}</span></div>
+    </div>
+    <div class="verdict">${verdict}</div>
+    <details><summary>About ${esc(a)}</summary>${review(0)}</details>
+    <details><summary>About ${esc(b)}</summary>${review(1)}</details>
+    <button class="btn" id="again">Play again with new questions</button>
+    <button class="btn ghost" id="home">Change names</button>`;
+  document.getElementById("again").onclick = () => {
+    const used = new Set(S.qs);
+    let fresh = shuffle([...BANK.keys()].filter(k => !used.has(k)));
+    if (fresh.length < n) fresh = shuffle([...BANK.keys()]);
+    S = { names: S.names, qs: fresh.slice(0, n), answers: [[], []], guesses: [[], []], phase: 0 };
+    handoff();
+  };
+  document.getElementById("home").onclick = setup;
+}
+
+setup();
+</script>
+</body>
+</html>

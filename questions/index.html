@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Question Deck</title>
+<style>
+  :root {
+    --bg: #fff4f1; --card: #ffffff; --ink: #3a2530; --soft: #8a6f7a;
+    --accent: #e8507a; --accent-ink: #ffffff; --chip: #fde6ea; --line: #f3d3da;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html { height: 100%; }
+  body {
+    min-height: 100%; min-height: 100dvh; margin: 0; padding: 16px; overflow-x: hidden;
+    background: radial-gradient(circle at 20% 0%, #ffe1e8 0, transparent 55%),
+                radial-gradient(circle at 100% 100%, #ffe9d6 0, transparent 50%), var(--bg);
+    color: var(--ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    display: flex;
+  }
+  .wrap { margin: auto; width: 100%; max-width: 460px; }
+  h1 { font-size: 26px; margin: 0 0 4px; text-align: center; }
+  p.sub { color: var(--soft); margin: 0 0 16px; font-size: 15px; text-align: center; }
+  .tabs { display: flex; gap: 6px; background: var(--card); padding: 4px; border-radius: 999px; margin-bottom: 18px;
+    box-shadow: 0 6px 20px -12px rgba(232,80,122,.5); }
+  .tabs button {
+    flex: 1; border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 600;
+    color: var(--soft); padding: 9px 2px; border-radius: 999px; cursor: pointer;
+  }
+  .tabs button.on { background: var(--accent); color: #fff; }
+  .stage { position: relative; height: min(62vh, 420px); min-height: 300px; touch-action: pan-y; }
+  .q {
+    position: absolute; inset: 0; background: var(--card); border-radius: 28px;
+    box-shadow: 0 20px 50px -20px rgba(232, 80, 122, .45);
+    display: flex; flex-direction: column; padding: 26px 24px; user-select: none; cursor: grab;
+  }
+  .q.back { transform: translateY(12px) scale(.95); opacity: .6; box-shadow: none; pointer-events: none; }
+  .q .tag { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+  .q .text { flex: 1; display: flex; align-items: center; font-size: clamp(22px, 6vw, 28px); font-weight: 700; line-height: 1.3; text-wrap: balance; }
+  .q .foot { font-size: 13px; color: var(--soft); display: flex; justify-content: space-between; }
+  .q.light { background: linear-gradient(160deg, #fff 60%, #fff3e6); }
+  .q.deep { background: linear-gradient(160deg, #fff 55%, #efe9ff); }
+  .q.spicy { background: linear-gradient(160deg, #fff 55%, #ffe1e1); }
+  .q.done { align-items: center; justify-content: center; text-align: center; cursor: default; }
+  .q.done .big { font-size: 52px; }
+  .controls { display: flex; gap: 10px; margin-top: 18px; }
+  .btn {
+    flex: 1; font: inherit; font-size: 16px; font-weight: 700; border: 0; cursor: pointer; border-radius: 16px; padding: 14px;
+    background: var(--accent); color: #fff;
+  }
+  .btn.ghost { background: var(--card); color: var(--ink); box-shadow: 0 6px 20px -12px rgba(232,80,122,.5); flex: 0 0 auto; padding: 14px 18px; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .hint { text-align: center; font-size: 13px; color: var(--soft); margin: 12px 0 0; }
+  .link { background: none; border: 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Question Deck 💬</h1>
+  <p class="sub">Take turns. Both of you answer.</p>
+  <div class="tabs" id="tabs">
+    <button data-k="light">🌤 Light</button>
+    <button data-k="deep">🌙 Deeper</button>
+    <button data-k="spicy">🌶 Spicy</button>
+    <button data-k="mix">🎲 Mix</button>
+  </div>
+  <div class="stage" id="stage"></div>
+  <div class="controls">
+    <button class="btn ghost" id="prev" aria-label="Previous card">←</button>
+    <button class="btn" id="next">Next card</button>
+  </div>
+  <p class="hint">Swipe the card or tap Next. Used cards are remembered on this phone. <button class="link" id="reset">Start this deck over</button></p>
+</div>
+
+<script>
+const DECKS = {
+  light: { name: "Light", list: [
+    "What's a small thing that instantly makes your day better?",
+    "If you could only eat one cuisine for a year, which would it be?",
+    "What was your favourite cartoon growing up?",
+    "What's the most useless talent you have?",
+    "Beach holiday or city trip, and why?",
+    "What's a song you'll never skip?",
+    "What's the best thing you've eaten this month?",
+    "If you had a free Saturday with no plans, what would you do?",
+    "Which fictional world would you most like to live in?",
+    "What's your go-to karaoke song (even if you'd never sing it)?",
+    "What's a hobby you'd pick up if time and money didn't matter?",
+    "Morning person or night owl? Any proof?",
+    "What's the weirdest food combo you secretly like?",
+    "What app do you open the most, honestly?",
+    "What was your first job, or the first thing you ever earned money for?",
+    "If you were a dessert, which one would you be?",
+    "What's a movie you can rewatch forever?",
+    "What's the best gift you've ever received?",
+    "Which emoji do you use way too much?",
+    "What's something you were obsessed with as a kid?",
+    "If you could instantly master a skill, what would it be?",
+    "What's your most controversial food opinion?",
+    "Cats, dogs, or neither?",
+    "What's the funniest thing that happened to you this year?",
+    "What would your perfect breakfast look like?",
+    "Which season suits your personality best?",
+    "What's one place in this city you love that most people don't know about?",
+    "If your life had a theme song, what would it be?",
+    "What's something you're weirdly good at remembering?",
+    "What's the last thing that made you laugh out loud?"
+  ]},
+  deep: { name: "Deeper", list: [
+    "What's something you've changed your mind about in the last few years?",
+    "When do you feel most like yourself?",
+    "What's a memory you go back to when you need comfort?",
+    "What's something you're proud of that you rarely talk about?",
+    "Who has shaped who you are the most?",
+    "What does a really good day look like for you, start to finish?",
+    "What's a fear you've grown out of?",
+    "What do you wish more people asked you about?",
+    "How do you like to be cared for when you're having a bad day?",
+    "What's a lesson you had to learn the hard way?",
+    "What's something you want to get better at this year?",
+    "Which friendship has taught you the most?",
+    "What does home mean to you?",
+    "When was the last time you felt truly at peace?",
+    "What's a dream you had as a kid that you still think about?",
+    "What's one thing you'd tell your younger self?",
+    "What makes you feel appreciated?",
+    "What's something small that means a lot to you?",
+    "What are you most grateful for right now?",
+    "What does a good relationship look like to you?",
+    "What's something you find hard to say out loud?",
+    "What kind of person do you hope to be in ten years?",
+    "What's the bravest thing you've ever done?",
+    "Is there something you've never told anyone that you'd be okay sharing now?",
+    "What's a tradition you'd love to start?",
+    "What helps you feel calm when everything is too much?",
+    "What do you think people misunderstand about you?",
+    "What moment between us so far has stuck with you most?",
+    "What's something you want us to do together someday?",
+    "What's one way I could make your day easier?"
+  ]},
+  spicy: { name: "Spicy", list: [
+    "What was your first impression of me, honestly?",
+    "When did you first realise you liked me?",
+    "What's the most attractive thing someone can do without trying?",
+    "What outfit of mine is your favourite?",
+    "What's your idea of a perfect date night?",
+    "Describe our first kiss in three words.",
+    "What's something I do that you secretly find really cute?",
+    "What's the most romantic thing anyone's ever done for you?",
+    "Where's the most spontaneous place you'd want to go on a date?",
+    "What's a compliment you'd love to hear more often?",
+    "Rate your flirting skills out of 10. Now let me rate them.",
+    "What's one thing you've wanted to tell me but haven't yet?",
+    "What song makes you think of me?",
+    "Hand holding, cuddling or forehead kisses: pick one forever.",
+    "What's a date idea you've been too shy to suggest?",
+    "What's the cheesiest pickup line you know? Use it on me.",
+    "What part of today did you enjoy most so far?",
+    "Who said 'I like you' first, and how did it go?",
+    "What's something you'd love to do together on a rainy day?",
+    "If we had a whole weekend away, where would we go?",
+    "What was going through your head on our first date?",
+    "What's your favourite way to be surprised?",
+    "Truth: have you ever practised what to say before texting me?",
+    "Describe me using only food.",
+    "What's a habit of mine you've started picking up?",
+    "Slow dance in the kitchen: yes or yes?",
+    "What's one thing about me you'd never want to change?",
+    "What's a moment you wanted to kiss me but didn't?",
+    "Give me a nickname right now.",
+    "What would you want our next date to be?"
+  ]}
+};
+
+function load(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+
+const $ = id => document.getElementById(id);
+let deck = load("qdeck.tab", "light");
+let used = load("qdeck.used", { light: [], deep: [], spicy: [] });   // ids like "light:3"
+let history = [];   // ids shown this session for the Back button
+let current = null, nextUp = null;
+
+function pool(k) {
+  const keys = k === "mix" ? ["light", "deep", "spicy"] : [k];
+  const all = [];
+  keys.forEach(d => DECKS[d].list.forEach((_, i) => { const id = d + ":" + i; if (!used[d].includes(id)) all.push(id); }));
+  return all;
+}
+function total(k) { return k === "mix" ? 90 : DECKS[k].list.length; }
+function pick(exclude) {
+  const p = pool(deck).filter(id => id !== exclude);
+  return p.length ? p[Math.floor(Math.random() * p.length)] : null;
+}
+function cardHTML(id, extra) {
+  if (!id) return `<div class="q done ${extra}"><div class="big">🎉</div><p class="text" style="flex:0">You've gone through every card here.</p><p class="foot" style="justify-content:center">Try another deck, or start this one over.</p></div>`;
+  const [d, i] = id.split(":");
+  const el = document.createElement("div");
+  el.className = `q ${d} ${extra}`;
+  el.innerHTML = `<div class="tag"></div><div class="text"></div><div class="foot"><span></span><span>#${+i + 1}</span></div>`;
+  el.querySelector(".tag").textContent = DECKS[d].name;
+  el.querySelector(".text").textContent = DECKS[d].list[i];
+  el.querySelector(".foot span").textContent = `${pool(deck).length} left`;
+  return el.outerHTML;
+}
+function render() {
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.k === deck));
+  $("stage").innerHTML = (nextUp || current ? cardHTML(nextUp, "back") : "") + cardHTML(current, "");
+  $("next").disabled = !current;
+  $("prev").disabled = !history.length;
+  attachSwipe();
+}
+function markUsed(id) { if (!id) return; const d = id.split(":")[0]; if (!used[d].includes(id)) { used[d].push(id); save("qdeck.used", used); } }
+function advance(dir = -1) {
+  if (!current) return;
+  const top = $("stage").lastElementChild;
+  top.style.transition = "transform .3s ease, opacity .3s";
+  top.style.transform = `translateX(${dir * 120}%) rotate(${dir * 18}deg)`; top.style.opacity = "0";
+  setTimeout(() => {
+    markUsed(current); history.push(current);
+    current = nextUp && !used[nextUp.split(":")[0]].includes(nextUp) ? nextUp : pick();
+    nextUp = pick(current);
+    render();
+  }, 250);
+}
+function back() {
+  if (!history.length) return;
+  const id = history.pop(); const d = id.split(":")[0];
+  used[d] = used[d].filter(x => x !== id); save("qdeck.used", used);
+  nextUp = current; current = id; render();
+}
+function start() { history = []; current = pick(); nextUp = pick(current); save("qdeck.tab", deck); render(); }
+
+function attachSwipe() {
+  const el = $("stage").lastElementChild; if (!el || !current) return;
+  let x0 = null, dx = 0;
+  el.onpointerdown = e => { x0 = e.clientX; dx = 0; el.setPointerCapture(e.pointerId); el.style.transition = "none"; };
+  el.onpointermove = e => { if (x0 === null) return; dx = e.clientX - x0; el.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; };
+  el.onpointerup = el.onpointercancel = () => {
+    if (x0 === null) return; x0 = null;
+    if (Math.abs(dx) > 90) advance(Math.sign(dx));
+    else { el.style.transition = "transform .2s"; el.style.transform = ""; }
+  };
+}
+
+$("tabs").onclick = e => { const k = e.target.closest("button")?.dataset.k; if (k) { deck = k; start(); } };
+$("next").onclick = () => advance(-1);
+$("prev").onclick = back;
+$("reset").onclick = () => {
+  (deck === "mix" ? ["light", "deep", "spicy"] : [deck]).forEach(d => used[d] = []);
+  save("qdeck.used", used); start();
+};
+document.addEventListener("keydown", e => { if (e.key === "ArrowRight" || e.key === " ") advance(-1); if (e.key === "ArrowLeft") back(); });
+if (!DECKS[deck] && deck !== "mix") deck = "light";
+start();
+</script>
+</body>
+</html>

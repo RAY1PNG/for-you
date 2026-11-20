@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Date Roulette</title>
+<style>
+  :root {
+    --bg: #fff4f1; --card: #ffffff; --ink: #3a2530; --soft: #8a6f7a;
+    --accent: #e8507a; --accent-ink: #ffffff; --chip: #fde6ea; --line: #f3d3da;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html { height: 100%; }
+  body {
+    min-height: 100%; min-height: 100dvh; margin: 0; padding: 16px; overflow-x: hidden;
+    background: radial-gradient(circle at 20% 0%, #ffe1e8 0, transparent 55%),
+                radial-gradient(circle at 100% 100%, #ffe9d6 0, transparent 50%), var(--bg);
+    color: var(--ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    display: flex;
+  }
+  .card {
+    margin: auto; width: 100%; max-width: 460px; background: var(--card);
+    border-radius: 28px; padding: 24px 20px 22px;
+    box-shadow: 0 20px 50px -20px rgba(232, 80, 122, .45);
+  }
+  h1 { font-size: 26px; margin: 0 0 4px; text-align: center; }
+  p.sub { color: var(--soft); margin: 0 0 16px; font-size: 15px; text-align: center; }
+  .tabs { display: flex; gap: 6px; background: var(--chip); padding: 4px; border-radius: 999px; margin-bottom: 16px; }
+  .tabs button {
+    flex: 1; border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 600;
+    color: var(--soft); padding: 9px 4px; border-radius: 999px; cursor: pointer;
+  }
+  .tabs button.on { background: var(--card); color: var(--accent); box-shadow: 0 2px 8px rgba(232,80,122,.18); }
+  .wheel-wrap { position: relative; width: 100%; max-width: 340px; margin: 0 auto; aspect-ratio: 1; }
+  .pointer {
+    position: absolute; left: 50%; top: -6px; transform: translateX(-50%); z-index: 2;
+    width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent;
+    border-top: 26px solid var(--ink); filter: drop-shadow(0 2px 2px rgba(0,0,0,.2));
+  }
+  canvas { width: 100%; height: 100%; display: block; border-radius: 50%;
+    box-shadow: 0 10px 30px -10px rgba(232,80,122,.5); }
+  .hub {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    width: 64px; height: 64px; border-radius: 50%; background: var(--card); border: 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,.15); font: inherit; font-weight: 800; font-size: 14px;
+    color: var(--accent); cursor: pointer;
+  }
+  .hub:disabled { color: var(--soft); cursor: default; }
+  .result {
+    margin: 18px 0 4px; text-align: center; min-height: 60px;
+  }
+  .result .lbl { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--soft); font-weight: 600; }
+  .result .val { font-size: 26px; font-weight: 800; margin-top: 4px; animation: pop .4s ease; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .sealed {
+    margin: 8px auto 0; max-width: 280px; background: var(--chip); border: 2px dashed var(--accent);
+    border-radius: 18px; padding: 14px; cursor: pointer; font: inherit; color: var(--ink); width: 100%;
+  }
+  .sealed b { display: block; font-size: 18px; }
+  .sealed span { font-size: 13px; color: var(--soft); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0 6px; }
+  .toggle { display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer; user-select: none; }
+  .toggle input { display: none; }
+  .toggle i { width: 44px; height: 26px; border-radius: 13px; background: var(--line); position: relative; transition: background .2s; flex: none; }
+  .toggle i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left .2s; }
+  .toggle input:checked + i { background: var(--accent); }
+  .toggle input:checked + i::after { left: 21px; }
+  .link { background: none; border: 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; padding: 6px 0; }
+  .editor { border-top: 2px solid var(--line); margin-top: 10px; padding-top: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--chip); padding: 8px 8px 8px 14px; border-radius: 999px; font-size: 15px; }
+  .chip button { border: 0; background: rgba(232,80,122,.15); color: var(--accent); width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 15px; line-height: 1; }
+  .add { display: flex; gap: 8px; margin-top: 12px; }
+  .add input {
+    flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink);
+    border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; outline: none; background: #fffafa;
+  }
+  .add input:focus { border-color: var(--accent); }
+  .add button, .btn {
+    font: inherit; font-weight: 700; border: 0; cursor: pointer; background: var(--accent); color: var(--accent-ink);
+    border-radius: 14px; padding: 10px 16px; font-size: 16px;
+  }
+  .hint { font-size: 13px; color: var(--soft); margin: 10px 0 0; }
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>Date Roulette 🎡</h1>
+  <p class="sub">Can't decide? Let the wheel pick.</p>
+
+  <div class="tabs" id="tabs">
+    <button data-k="food">🍜 Eat</button>
+    <button data-k="do">🎳 Do</button>
+    <button data-k="custom">✏️ Ours</button>
+  </div>
+
+  <div class="wheel-wrap">
+    <div class="pointer"></div>
+    <canvas id="wheel" width="680" height="680"></canvas>
+    <button class="hub" id="spin">SPIN</button>
+  </div>
+
+  <div class="result" id="result"></div>
+
+  <div class="row">
+    <label class="toggle"><input type="checkbox" id="mystery"><i></i> Mystery mode</label>
+    <button class="link" id="editBtn">Edit options</button>
+  </div>
+  <p class="hint" id="mysteryHint" hidden>The wheel hides its options and the pick stays sealed until you tap it, so the spinner can keep it a surprise.</p>
+
+  <section class="editor" id="editor" hidden>
+    <div class="chips" id="chips"></div>
+    <form class="add" id="addForm">
+      <input id="addInput" type="text" maxlength="28" placeholder="Add an option…" autocomplete="off">
+      <button type="submit">Add</button>
+    </form>
+    <p class="hint">Saved on this phone. <button class="link" id="resetBtn" type="button">Reset to defaults</button></p>
+  </section>
+</main>
+
+<script>
+const DEFAULTS = {
+  food: ["Sushi", "Pizza", "Ramen", "Tacos", "Korean BBQ", "Dessert first", "Cook together", "Street food"],
+  do: ["Movie night", "Arcade", "Picnic", "Bowling", "Museum", "Sunset walk", "Karaoke", "Board game café"],
+  custom: ["Your idea", "My idea", "Surprise me"]
+};
+const COLORS = ["#e8507a", "#ffb3c4", "#f47c5e", "#ffd6c9", "#c94f8c", "#ffc2dc", "#ff9a8b", "#fde6ea"];
+const DARK_TEXT = new Set(["#ffb3c4", "#ffd6c9", "#ffc2dc", "#fde6ea", "#ff9a8b"]);
+
+function load(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+
+let lists = load("roulette.lists", structuredClone(DEFAULTS));
+let tab = load("roulette.tab", "food");
+if (!lists[tab]) tab = "food";
+let rot = 0, spinning = false;
+
+const cv = document.getElementById("wheel"), ctx = cv.getContext("2d");
+const $ = id => document.getElementById(id);
+const mystery = $("mystery");
+mystery.checked = load("roulette.mystery", false);
+
+function items() { return lists[tab]; }
+
+function draw() {
+  const list = items(), n = list.length, R = cv.width / 2, seg = 2 * Math.PI / Math.max(n, 1);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if (!n) { ctx.fillStyle = "#fde6ea"; ctx.beginPath(); ctx.arc(R, R, R, 0, 7); ctx.fill(); return; }
+  list.forEach((label, i) => {
+    const a0 = i * seg - Math.PI / 2, color = COLORS[(n % COLORS.length === 1 && i === n - 1) ? 2 : i % COLORS.length];
+    ctx.beginPath(); ctx.moveTo(R, R); ctx.arc(R, R, R, a0, a0 + seg); ctx.closePath();
+    ctx.fillStyle = color; ctx.fill();
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 4; ctx.stroke();
+    ctx.save(); ctx.translate(R, R); ctx.rotate(a0 + seg / 2);
+    ctx.fillStyle = DARK_TEXT.has(color) ? "#3a2530" : "#fff";
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    let size = n > 10 ? 26 : 32;
+    const text = mystery.checked ? "?" : label;
+    ctx.font = `700 ${size}px "Segoe UI", system-ui, sans-serif`;
+    while (ctx.measureText(text).width > R - 90 && size > 16) { size -= 2; ctx.font = `700 ${size}px "Segoe UI", system-ui, sans-serif`; }
+    ctx.fillText(text, R - 26, 0);
+    ctx.restore();
+  });
+}
+
+function setRot(r, animate) {
+  cv.style.transition = animate ? "transform 4.2s cubic-bezier(.12,.75,.15,1)" : "none";
+  cv.style.transform = `rotate(${r}rad)`;
+}
+
+function spin() {
+  const list = items();
+  if (spinning || list.length < 2) { if (list.length < 2) showMsg("Add at least two options first."); return; }
+  spinning = true; $("spin").disabled = true; $("result").innerHTML = "";
+  const n = list.length, seg = 2 * Math.PI / n, w = Math.floor(Math.random() * n);
+  const c = (w + 0.2 + Math.random() * 0.6) * seg;          // land somewhere inside the winning slice
+  const want = ((-c - rot) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  rot += (5 + Math.floor(Math.random() * 3)) * 2 * Math.PI + want;
+  setRot(rot, true);
+  setTimeout(() => { spinning = false; $("spin").disabled = false; showWinner(list[w]); }, 4300);
+}
+
+function showWinner(label) {
+  const r = $("result");
+  if (mystery.checked) {
+    r.innerHTML = `<button class="sealed" id="sealed"><b>💌 Sealed pick</b><span>Tap to open when you're ready</span></button>`;
+    $("sealed").onclick = () => { r.innerHTML = `<div class="lbl">Tonight it's</div><div class="val"></div>`; r.querySelector(".val").textContent = label + " ✨"; };
+  } else {
+    r.innerHTML = `<div class="lbl">Tonight it's</div><div class="val"></div>`;
+    r.querySelector(".val").textContent = label + " ✨";
+  }
+  if (navigator.vibrate) navigator.vibrate(60);
+}
+function showMsg(t) { $("result").innerHTML = `<div class="lbl"></div>`; $("result").firstChild.textContent = t; }
+
+function renderTabs() { document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.k === tab)); }
+function renderChips() {
+  const box = $("chips"); box.innerHTML = "";
+  items().forEach((t, i) => {
+    const el = document.createElement("span"); el.className = "chip";
+    el.textContent = mystery.checked ? "?" : t;
+    const x = document.createElement("button"); x.type = "button"; x.textContent = "×"; x.ariaLabel = "Remove";
+    x.onclick = () => { items().splice(i, 1); save("roulette.lists", lists); renderAll(); };
+    el.appendChild(x); box.appendChild(el);
+  });
+}
+function renderAll() { renderTabs(); renderChips(); draw(); $("mysteryHint").hidden = !mystery.checked; }
+
+$("tabs").onclick = e => {
+  const k = e.target.closest("button")?.dataset.k; if (!k || spinning) return;
+  tab = k; save("roulette.tab", tab); rot = 0; setRot(0, false); $("result").innerHTML = ""; renderAll();
+};
+$("spin").onclick = spin;
+mystery.onchange = () => { save("roulette.mystery", mystery.checked); $("result").innerHTML = ""; renderAll(); };
+$("editBtn").onclick = () => { const ed = $("editor"); ed.hidden = !ed.hidden; $("editBtn").textContent = ed.hidden ? "Edit options" : "Done"; };
+$("addForm").onsubmit = e => {
+  e.preventDefault(); const v = $("addInput").value.trim(); if (!v) return;
+  if (items().length >= 16) { showMsg("16 options max — remove one first."); return; }
+  items().push(v); $("addInput").value = ""; save("roulette.lists", lists); renderAll();
+};
+$("resetBtn").onclick = () => { lists[tab] = [...DEFAULTS[tab]]; save("roulette.lists", lists); renderAll(); };
+
+renderAll();
+</script>
+</body>
+</html>
